@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="INCH & BRICK REALTY — Scratch to reveal the winner!" />
+  <title>INCH & BRICK — Scratch Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Great+Vibes&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div class="bg-pattern"></div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+
+  <main class="card-wrapper">
+    <article class="scratch-card" id="scratchCard">
+      <header class="card-header">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 48 48" aria-hidden="true">
+            <rect x="6" y="22" width="14" height="14" fill="#c9a227" rx="1"/>
+            <rect x="20" y="14" width="14" height="22" fill="#fff" rx="1"/>
+            <polygon points="24,6 38,18 10,18" fill="#c9a227"/>
+          </svg>
+          <div class="logo-text">
+            <span class="logo-name">INCH &amp; BRICK</span>
+            <span class="logo-tag">REALTY</span>
+          </div>
+        </div>
+        <h1 class="congrats">Congratulations!</h1>
+        <div class="gold-underline"></div>
+      </header>
+
+      <section class="card-body">
+        <p class="label-top">GUESS ON CLOSING</p>
+
+        <div class="scratch-zone" id="scratchZone">
+          <div class="reveal-layer">
+            <span class="reveal-label">WINNER</span>
+            <h2 class="winner-name" id="winnerName">DARAAB</h2>
+            <p class="reveal-sub">You did it!</p>
+          </div>
+          <canvas id="scratchCanvas" aria-label="Scratch here to reveal the winner"></canvas>
+          <div class="scratch-hint" id="scratchHint">
+            <span class="hint-icon">?</span>
+            <span class="hint-text">Scratch to Reveal</span>
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <span class="progress-text" id="progressText">0% revealed</span>
+        </div>
+
+        <p class="tagline">DISCIPLINE · TRUST · SYSTEM · YOU DID IT</p>
+      </section>
+
+      <footer class="card-footer">
+        <span>Your Future. Your Destiny.</span>
+      </footer>
+    </article>
+
+    <button class="reset-btn hidden" id="resetBtn" type="button">Scratch Again</button>
+  </main>
+
+  <script src="js/scratch.js"></script>
+</body>
+</html>
