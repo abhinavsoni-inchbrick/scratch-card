@@ -1,20 +1,21 @@
-# INCH & BRICK — Scratch Card
+# Inch & Brick — Scratch Card
 
-A premium interactive scratch card revealing the winner **DARAAB**, styled in INCH & BRICK REALTY navy & gold branding.
+Interactive scratch card revealing the winner **DARAAB**.
 
-## Live Demo
+## Live Site
 
-Hosted on GitHub Pages: [https://abhinavsoni-inchbrick.github.io/scratch-card/](https://abhinavsoni-inchbrick.github.io/scratch-card/)
+**https://abhinavsoni-inchbrick.github.io/scratch-card/**
 
-## How to Use
+## Features
 
-1. Open the page on desktop or mobile
-2. Scratch the gold area with your mouse or finger
-3. Reveal **DARAAB** and enjoy the celebration!
+- Black & gold Inch & Brick branding
+- Scratch to reveal **DARAAB** at 60%
+- Colorful party popper + gold sparkles + celebration sound
+- Works on mobile and desktop
 
-## Local Development
+## Local
 
-Open `index.html` in a browser, or run a local server:
+Open `index.html` in a browser, or run:
 
 ```bash
 npx serve .
