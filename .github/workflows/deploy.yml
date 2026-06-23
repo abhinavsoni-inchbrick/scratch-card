@@ -24,6 +24,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare site files
+        run: |
+          mkdir -p site
+          cp index.html .nojekyll site/
+          cp -r css js site/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -32,11 +38,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            index.html
-            css
-            js
-            .nojekyll
+          path: site
 
       - name: Deploy to GitHub Pages
         id: deployment
