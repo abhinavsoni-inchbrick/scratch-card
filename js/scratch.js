@@ -1,7 +1,7 @@
 (function () {
   const WINNER = 'DARAAB';
-  const REVEAL_THRESHOLD = 55;
-  const BRUSH_SIZE = 36;
+  const REVEAL_THRESHOLD = 45;
+  const BRUSH_SIZE = 42;
 
   const canvas = document.getElementById('scratchCanvas');
   const ctx = canvas.getContext('2d');
@@ -101,10 +101,11 @@
     if (isDrawing) {
       ctx.moveTo(lastX, lastY);
       ctx.lineTo(x, y);
-    } else {
-      ctx.arc(x, y, BRUSH_SIZE / 2, 0, Math.PI * 2);
+      ctx.stroke();
     }
-    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(x, y, BRUSH_SIZE / 2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
 
     lastX = x;
@@ -114,7 +115,17 @@
     updateProgress();
   }
 
+  let progressTimer = null;
+
   function updateProgress() {
+    if (progressTimer) return;
+    progressTimer = setTimeout(() => {
+      progressTimer = null;
+      measureProgress();
+    }, 80);
+  }
+
+  function measureProgress() {
     const w = canvas.width;
     const h = canvas.height;
     const data = ctx.getImageData(0, 0, w, h).data;
