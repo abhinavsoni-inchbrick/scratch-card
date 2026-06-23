@@ -15,6 +15,7 @@
   const confettiCtx = confettiCanvas.getContext('2d');
   const flashOverlay = document.getElementById('flashOverlay');
   const sparkleRing = document.getElementById('sparkleRing');
+  const soundHint = document.getElementById('soundHint');
 
   let isDrawing = false;
   let revealed = false;
@@ -26,89 +27,132 @@
   let totalArea = 1;
   let progressTimer = null;
   let audioCtx = null;
+  let masterGain = null;
+  let audioReady = false;
 
-  const CONFETTI_COLORS = ['#B8954A', '#d4b06a', '#ffffff', '#1A2332', '#D4DCE8'];
-  const SILVER_COLORS = ['#ffffff', '#e8e8f5', '#c0c0d8', '#d4d4e8', '#f5f5ff', '#a8a8c0'];
+  const CONFETTI_COLORS = [
+    '#FF3366', '#FF6B35', '#FFD700', '#00E676', '#00B0FF',
+    '#7C4DFF', '#FF4081', '#FFEB3B', '#D4AF37', '#FFFFFF',
+    '#18FFFF', '#E040FB', '#76FF03', '#FF1744', '#2979FF'
+  ];
+  const SPARKLE_COLORS = ['#FFD700', '#FFF8DC', '#D4AF37', '#FFFFFF', '#FFEC8B', '#F0E68C'];
 
   document.getElementById('winnerName').textContent = WINNER;
   buildSparkleRing();
 
   function buildSparkleRing() {
     sparkleRing.innerHTML = '';
-    const stars = ['✦', '✧', '★', '·'];
-    for (let i = 0; i < 24; i++) {
+    const stars = ['✦', '★', '✧', '·'];
+    for (let i = 0; i < 28; i++) {
       const el = document.createElement('span');
       const isStar = i % 3 === 0;
       el.className = isStar ? 'spark star' : 'spark';
       if (isStar) el.textContent = stars[i % stars.length];
-      const angle = (i / 24) * Math.PI * 2;
-      const radius = 38 + (i % 5) * 8;
+      const angle = (i / 28) * Math.PI * 2;
+      const radius = 36 + (i % 6) * 7;
       el.style.left = (50 + Math.cos(angle) * radius) + '%';
       el.style.top = (50 + Math.sin(angle) * radius * 0.7) + '%';
-      el.style.animationDelay = (i * 0.08) + 's';
+      el.style.animationDelay = (i * 0.07) + 's';
       sparkleRing.appendChild(el);
     }
   }
 
-  function initAudio() {
+  async function initAudio() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.85;
+      masterGain.connect(audioCtx.destination);
     }
     if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
+      await audioCtx.resume();
+    }
+    if (!audioReady) {
+      const buffer = audioCtx.createBuffer(1, 1, audioCtx.sampleRate);
+      const src = audioCtx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(masterGain);
+      src.start(0);
+      audioReady = true;
+      if (soundHint) soundHint.classList.add('hidden');
     }
   }
 
   function playPopperSound() {
-    if (!audioCtx) return;
+    if (!audioCtx || !masterGain) return;
 
     const now = audioCtx.currentTime;
+    const out = masterGain;
 
     const pop = audioCtx.createOscillator();
     const popGain = audioCtx.createGain();
     pop.type = 'sine';
-    pop.frequency.setValueAtTime(180, now);
-    pop.frequency.exponentialRampToValueAtTime(40, now + 0.12);
-    popGain.gain.setValueAtTime(0.5, now);
-    popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    pop.frequency.setValueAtTime(220, now);
+    pop.frequency.exponentialRampToValueAtTime(35, now + 0.18);
+    popGain.gain.setValueAtTime(0.9, now);
+    popGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
     pop.connect(popGain);
-    popGain.connect(audioCtx.destination);
+    popGain.connect(out);
     pop.start(now);
-    pop.stop(now + 0.15);
+    pop.stop(now + 0.2);
+
+    const pop2 = audioCtx.createOscillator();
+    const pop2Gain = audioCtx.createGain();
+    pop2.type = 'square';
+    pop2.frequency.setValueAtTime(120, now);
+    pop2.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+    pop2Gain.gain.setValueAtTime(0.15, now);
+    pop2Gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+    pop2.connect(pop2Gain);
+    pop2Gain.connect(out);
+    pop2.start(now);
+    pop2.stop(now + 0.12);
 
     const noise = audioCtx.createBufferSource();
-    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.2, audioCtx.sampleRate);
+    const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.35, audioCtx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 1.5);
     }
     noise.buffer = buffer;
     const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'highpass';
-    noiseFilter.frequency.value = 1200;
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.value = 2000;
+    noiseFilter.Q.value = 0.8;
     const noiseGain = audioCtx.createGain();
-    noiseGain.gain.setValueAtTime(0.35, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+    noiseGain.gain.setValueAtTime(0.7, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
-    noiseGain.connect(audioCtx.destination);
+    noiseGain.connect(out);
     noise.start(now);
-    noise.stop(now + 0.2);
+    noise.stop(now + 0.35);
 
-    [523, 659, 784, 1047].forEach((freq, i) => {
+    [392, 523, 659, 784, 1047, 1318].forEach((freq, i) => {
       const chime = audioCtx.createOscillator();
       const chimeGain = audioCtx.createGain();
       chime.type = 'triangle';
       chime.frequency.value = freq;
-      const t = now + 0.05 + i * 0.07;
+      const t = now + 0.08 + i * 0.06;
       chimeGain.gain.setValueAtTime(0, t);
-      chimeGain.gain.linearRampToValueAtTime(0.12, t + 0.02);
-      chimeGain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+      chimeGain.gain.linearRampToValueAtTime(0.22, t + 0.03);
+      chimeGain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
       chime.connect(chimeGain);
-      chimeGain.connect(audioCtx.destination);
+      chimeGain.connect(out);
       chime.start(t);
-      chime.stop(t + 0.35);
+      chime.stop(t + 0.5);
     });
+  }
+
+  async function ensureSoundAndPlay() {
+    try {
+      await initAudio();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      playPopperSound();
+      setTimeout(playPopperSound, 180);
+    } catch (e) {
+      /* audio blocked */
+    }
   }
 
   function flashScreen() {
@@ -134,14 +178,15 @@
     ctx.clearRect(0, 0, w, h);
 
     const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, '#d4b06a');
-    grad.addColorStop(0.5, '#B8954A');
-    grad.addColorStop(1, '#c9a85a');
+    grad.addColorStop(0, '#f0d875');
+    grad.addColorStop(0.35, '#D4AF37');
+    grad.addColorStop(0.65, '#C9A227');
+    grad.addColorStop(1, '#9a7b1a');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
     ctx.font = 'bold 13px Arial, Helvetica, sans-serif';
-    ctx.fillStyle = 'rgba(26, 35, 50, 0.2)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
     ctx.textAlign = 'center';
     for (let y = 28; y < h; y += 44) {
       for (let x = 50; x < w; x += 100) {
@@ -153,9 +198,72 @@
       }
     }
 
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.font = 'bold 18px Arial, Helvetica, sans-serif';
     ctx.fillText('SCRATCH HERE', w / 2, h / 2);
+  }
+
+  function addBurst(ox, oy, power) {
+    for (let i = 0; i < 120; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = (Math.random() * 16 + 8) * power;
+      const shape = Math.random();
+      particles.push({
+        type: shape > 0.7 ? 'circle' : 'confetti',
+        x: ox + (Math.random() - 0.5) * 30,
+        y: oy + (Math.random() - 0.5) * 20,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - Math.random() * 8,
+        w: Math.random() * 10 + 5,
+        h: Math.random() * 7 + 4,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        rot: Math.random() * 360,
+        rotV: (Math.random() - 0.5) * 16,
+        gravity: 0.2 + Math.random() * 0.1,
+        life: 1,
+        drag: 0.984
+      });
+    }
+
+    for (let i = 0; i < 70; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = (Math.random() * 18 + 10) * power;
+      particles.push({
+        type: 'sparkle',
+        x: ox,
+        y: oy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - Math.random() * 10,
+        size: Math.random() * 5 + 2,
+        color: SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
+        rot: Math.random() * 360,
+        rotV: (Math.random() - 0.5) * 10,
+        gravity: 0.1,
+        life: 1,
+        twinkle: Math.random() * Math.PI * 2,
+        drag: 0.978
+      });
+    }
+
+    for (let i = 0; i < 55; i++) {
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+      const speed = (Math.random() * 20 + 12) * power;
+      particles.push({
+        type: 'streamer',
+        x: ox,
+        y: oy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        w: Math.random() * 5 + 2,
+        h: Math.random() * 28 + 14,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        rot: (angle * 180) / Math.PI + 90,
+        rotV: (Math.random() - 0.5) * 6,
+        gravity: 0.26,
+        life: 1,
+        drag: 0.988
+      });
+    }
   }
 
   function getPos(e) {
@@ -252,66 +360,9 @@
 
   function createPopperBurst(ox, oy) {
     particles = [];
-
-    for (let i = 0; i < 90; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 14 + 6;
-      particles.push({
-        type: 'confetti',
-        x: ox,
-        y: oy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - Math.random() * 6,
-        w: Math.random() * 9 + 4,
-        h: Math.random() * 6 + 3,
-        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
-        rot: Math.random() * 360,
-        rotV: (Math.random() - 0.5) * 14,
-        gravity: 0.22 + Math.random() * 0.08,
-        life: 1,
-        drag: 0.985
-      });
-    }
-
-    for (let i = 0; i < 80; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 16 + 8;
-      particles.push({
-        type: 'silver',
-        x: ox,
-        y: oy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - Math.random() * 8,
-        size: Math.random() * 4 + 2,
-        color: SILVER_COLORS[Math.floor(Math.random() * SILVER_COLORS.length)],
-        rot: Math.random() * 360,
-        rotV: (Math.random() - 0.5) * 8,
-        gravity: 0.12,
-        life: 1,
-        twinkle: Math.random() * Math.PI * 2,
-        drag: 0.98
-      });
-    }
-
-    for (let i = 0; i < 40; i++) {
-      const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.4;
-      const speed = Math.random() * 18 + 10;
-      particles.push({
-        type: 'streamer',
-        x: ox,
-        y: oy,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        w: Math.random() * 4 + 2,
-        h: Math.random() * 22 + 12,
-        color: Math.random() > 0.5 ? '#B8954A' : SILVER_COLORS[i % SILVER_COLORS.length],
-        rot: (angle * 180) / Math.PI + 90,
-        rotV: (Math.random() - 0.5) * 4,
-        gravity: 0.28,
-        life: 1,
-        drag: 0.99
-      });
-    }
+    addBurst(ox, oy, 1);
+    setTimeout(() => addBurst(ox - 40, oy - 20, 0.85), 120);
+    setTimeout(() => addBurst(ox + 40, oy - 20, 0.85), 220);
   }
 
   function finishReveal() {
@@ -324,7 +375,7 @@
     progressText.textContent = 'Winner revealed!';
 
     flashScreen();
-    playPopperSound();
+    ensureSoundAndPlay();
     launchPopper();
 
     resetBtn.classList.remove('hidden');
@@ -376,18 +427,24 @@
 
       confettiCtx.save();
 
-      if (p.type === 'silver') {
-        const twinkle = 0.5 + Math.sin(p.twinkle + Date.now() * 0.02) * 0.5;
+      if (p.type === 'sparkle') {
+        const twinkle = 0.4 + Math.sin(p.twinkle + Date.now() * 0.025) * 0.6;
         confettiCtx.globalAlpha = p.life * twinkle;
         confettiCtx.fillStyle = p.color;
-        confettiCtx.shadowColor = '#ffffff';
-        confettiCtx.shadowBlur = 10;
+        confettiCtx.shadowColor = p.color;
+        confettiCtx.shadowBlur = 12;
         confettiCtx.beginPath();
         confettiCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         confettiCtx.fill();
-        if (Math.random() > 0.7) {
-          drawStar(p.x, p.y, p.size * 1.8, '#ffffff', p.life * 0.8);
-        }
+        drawStar(p.x, p.y, p.size * 1.5, p.color, p.life * twinkle * 0.7);
+      } else if (p.type === 'circle') {
+        confettiCtx.globalAlpha = p.life;
+        confettiCtx.fillStyle = p.color;
+        confettiCtx.shadowColor = p.color;
+        confettiCtx.shadowBlur = 6;
+        confettiCtx.beginPath();
+        confettiCtx.arc(p.x, p.y, p.w / 2, 0, Math.PI * 2);
+        confettiCtx.fill();
       } else if (p.type === 'streamer') {
         confettiCtx.globalAlpha = p.life;
         confettiCtx.translate(p.x, p.y);
@@ -462,6 +519,10 @@
   canvas.addEventListener('touchend', onEnd);
 
   resetBtn.addEventListener('click', reset);
+
+  document.body.addEventListener('touchstart', () => initAudio(), { once: true, passive: true });
+  document.body.addEventListener('click', () => initAudio(), { once: true });
+
   window.addEventListener('resize', () => {
     if (!revealed) resizeCanvas();
     confettiCanvas.width = window.innerWidth;
