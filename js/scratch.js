@@ -1,10 +1,10 @@
 (function () {
   const WINNER = 'DARAAB';
-  const REVEAL_THRESHOLD = 45;
-  const BRUSH_SIZE = 42;
+  const REVEAL_THRESHOLD = 40;
+  const BRUSH_SIZE = 48;
 
   const canvas = document.getElementById('scratchCanvas');
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const zone = document.getElementById('scratchZone');
   const card = document.getElementById('scratchCard');
   const hint = document.getElementById('scratchHint');
@@ -20,64 +20,52 @@
   let lastY = 0;
   let particles = [];
   let confettiRunning = false;
+  let scratchArea = 0;
+  let totalArea = 1;
+  let progressTimer = null;
 
   document.getElementById('winnerName').textContent = WINNER;
 
   function resizeCanvas() {
     const rect = zone.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(rect.width * dpr);
+    canvas.height = Math.floor(rect.height * dpr);
     canvas.style.width = rect.width + 'px';
     canvas.style.height = rect.height + 'px';
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    totalArea = rect.width * rect.height;
+    scratchArea = 0;
     drawScratchLayer(rect.width, rect.height);
   }
 
   function drawScratchLayer(w, h) {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, w, h);
+
     const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, '#d4b84a');
-    grad.addColorStop(0.3, '#c9a227');
-    grad.addColorStop(0.6, '#a8841a');
-    grad.addColorStop(1, '#e8c84a');
+    grad.addColorStop(0, '#d4b06a');
+    grad.addColorStop(0.5, '#B8954A');
+    grad.addColorStop(1, '#c9a85a');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.globalAlpha = 0.15;
-    for (let i = 0; i < 80; i++) {
-      const x = Math.random() * w;
-      const y = Math.random() * h;
-      const r = Math.random() * 2 + 0.5;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fillStyle = Math.random() > 0.5 ? '#fff' : '#000';
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-
-    ctx.font = 'bold 14px Montserrat, sans-serif';
-    ctx.fillStyle = 'rgba(10, 22, 40, 0.25)';
+    ctx.font = 'bold 13px Arial, Helvetica, sans-serif';
+    ctx.fillStyle = 'rgba(26, 35, 50, 0.2)';
     ctx.textAlign = 'center';
-    const stepX = 90;
-    const stepY = 50;
-    for (let y = 30; y < h; y += stepY) {
-      for (let x = 45; x < w; x += stepX) {
+    for (let y = 28; y < h; y += 44) {
+      for (let x = 50; x < w; x += 100) {
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(-0.3);
+        ctx.rotate(-0.25);
         ctx.fillText('INCH & BRICK', 0, 0);
         ctx.restore();
       }
     }
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      ctx.beginPath();
-      ctx.moveTo(0, (h / 6) * i);
-      ctx.lineTo(w, (h / 6) * i + 20);
-      ctx.stroke();
-    }
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.font = 'bold 18px Arial, Helvetica, sans-serif';
+    ctx.fillText('SCRATCH HERE', w / 2, h / 2);
   }
 
   function getPos(e) {
@@ -89,56 +77,76 @@
     };
   }
 
-  function scratch(x, y) {
-    if (revealed) return;
-
+  function eraseAt(x, y, x2, y2) {
     ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.lineWidth = BRUSH_SIZE;
 
-    ctx.beginPath();
-    if (isDrawing) {
-      ctx.moveTo(lastX, lastY);
-      ctx.lineTo(x, y);
+    if (x2 !== undefined) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x2, y2);
       ctx.stroke();
+      const dist = Math.hypot(x2 - x, y2 - y);
+      scratchArea += dist * BRUSH_SIZE;
     }
+
     ctx.beginPath();
     ctx.arc(x, y, BRUSH_SIZE / 2, 0, Math.PI * 2);
     ctx.fill();
+    scratchArea += Math.PI * (BRUSH_SIZE / 2) * (BRUSH_SIZE / 2) * 0.5;
+
     ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function scratch(x, y) {
+    if (revealed) return;
+
+    if (isDrawing) {
+      eraseAt(lastX, lastY, x, y);
+    } else {
+      eraseAt(x, y);
+    }
 
     lastX = x;
     lastY = y;
-
     hint.classList.add('hidden');
     updateProgress();
   }
 
-  let progressTimer = null;
-
   function updateProgress() {
     if (progressTimer) return;
-    progressTimer = setTimeout(() => {
+    progressTimer = requestAnimationFrame(() => {
       progressTimer = null;
       measureProgress();
-    }, 80);
+    });
   }
 
   function measureProgress() {
-    const w = canvas.width;
-    const h = canvas.height;
-    const data = ctx.getImageData(0, 0, w, h).data;
-    let transparent = 0;
-    const total = w * h;
-    const step = 4;
+    let pct = Math.min(100, Math.round((scratchArea / totalArea) * 100));
 
-    for (let i = 3; i < data.length; i += step * 8) {
-      if (data[i] === 0) transparent++;
+    try {
+      const w = canvas.width;
+      const h = canvas.height;
+      const data = ctx.getImageData(0, 0, w, h).data;
+      let cleared = 0;
+      let samples = 0;
+      const stride = 16;
+
+      for (let i = 3; i < data.length; i += stride) {
+        samples++;
+        if (data[i] < 128) cleared++;
+      }
+
+      const pixelPct = Math.round((cleared / samples) * 100);
+      pct = Math.max(pct, pixelPct);
+    } catch (e) {
+      /* fallback to area estimate */
     }
 
-    const sampled = Math.floor(total / 8);
-    const pct = Math.min(100, Math.round((transparent / sampled) * 100));
     progressFill.style.width = pct + '%';
     progressText.textContent = pct + '% revealed';
 
@@ -150,8 +158,9 @@
   function finishReveal() {
     revealed = true;
     card.classList.add('revealed');
-    canvas.style.transition = 'opacity 0.6s ease';
+    canvas.style.transition = 'opacity 0.5s ease';
     canvas.style.opacity = '0';
+    canvas.style.pointerEvents = 'none';
     progressFill.style.width = '100%';
     progressText.textContent = 'Winner revealed!';
     resetBtn.classList.remove('hidden');
@@ -162,21 +171,21 @@
   function launchConfetti() {
     confettiCanvas.width = window.innerWidth;
     confettiCanvas.height = window.innerHeight;
-    const colors = ['#c9a227', '#e8c84a', '#ffffff', '#1a3568', '#f5e6a8'];
+    const colors = ['#B8954A', '#d4b06a', '#ffffff', '#1A2332', '#D4DCE8'];
     particles = [];
 
-    for (let i = 0; i < 120; i++) {
+    for (let i = 0; i < 100; i++) {
       particles.push({
-        x: confettiCanvas.width / 2 + (Math.random() - 0.5) * 200,
-        y: confettiCanvas.height * 0.4,
-        vx: (Math.random() - 0.5) * 10,
-        vy: Math.random() * -12 - 4,
-        w: Math.random() * 8 + 4,
-        h: Math.random() * 6 + 3,
+        x: confettiCanvas.width / 2 + (Math.random() - 0.5) * 220,
+        y: confettiCanvas.height * 0.38,
+        vx: (Math.random() - 0.5) * 9,
+        vy: Math.random() * -11 - 3,
+        w: Math.random() * 7 + 4,
+        h: Math.random() * 5 + 3,
         color: colors[Math.floor(Math.random() * colors.length)],
         rot: Math.random() * 360,
-        rotV: (Math.random() - 0.5) * 12,
-        gravity: 0.18 + Math.random() * 0.1
+        rotV: (Math.random() - 0.5) * 10,
+        gravity: 0.2
       });
     }
 
@@ -190,12 +199,11 @@
     confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
     let alive = 0;
 
-    particles.forEach(p => {
+    particles.forEach((p) => {
       p.vy += p.gravity;
       p.x += p.vx;
       p.y += p.vy;
       p.rot += p.rotV;
-
       if (p.y < confettiCanvas.height + 20) alive++;
 
       confettiCtx.save();
@@ -217,9 +225,11 @@
   function reset() {
     revealed = false;
     isDrawing = false;
+    scratchArea = 0;
     card.classList.remove('revealed');
     canvas.style.transition = 'none';
     canvas.style.opacity = '1';
+    canvas.style.pointerEvents = 'auto';
     hint.classList.remove('hidden');
     progressFill.style.width = '0%';
     progressText.textContent = '0% revealed';
@@ -262,5 +272,9 @@
     confettiCanvas.height = window.innerHeight;
   });
 
-  resizeCanvas();
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(resizeCanvas);
+  } else {
+    resizeCanvas();
+  }
 })();
