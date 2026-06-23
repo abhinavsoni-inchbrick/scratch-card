@@ -176,13 +176,36 @@ body {
   white-space: nowrap;
 }
 
+.scratch-card.revealed {
+  animation: cardPop 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cardPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.04); }
+  65% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
 .scratch-card.revealed .winner-name {
-  animation: winnerPulse 1.5s ease-in-out infinite;
+  animation: winnerPop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), winnerPulse 1.5s ease-in-out 0.7s infinite;
+}
+
+@keyframes winnerPop {
+  0% { transform: scale(0.5); opacity: 0.5; }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes winnerPulse {
-  0%, 100% { color: var(--white); text-shadow: 0 0 24px rgba(184, 149, 74, 0.5); }
-  50% { color: var(--gold-light); text-shadow: 0 0 36px rgba(184, 149, 74, 0.9); }
+  0%, 100% {
+    color: var(--white);
+    text-shadow: 0 0 24px rgba(192, 192, 220, 0.6), 0 0 12px rgba(184, 149, 74, 0.5);
+  }
+  50% {
+    color: #e8e8f0;
+    text-shadow: 0 0 40px rgba(255, 255, 255, 0.95), 0 0 20px rgba(192, 192, 220, 0.8);
+  }
 }
 
 .reveal-sub {
@@ -323,4 +346,64 @@ body {
 
 .reset-btn.hidden {
   display: none;
+}
+
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255,255,255,0.85) 0%, rgba(192,192,220,0.4) 40%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 90;
+  transition: opacity 0.08s ease-out;
+}
+
+.flash-overlay.active {
+  opacity: 1;
+}
+
+.sparkle-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+}
+
+.scratch-card.revealed .sparkle-ring {
+  opacity: 1;
+}
+
+.sparkle-ring .spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #c0c0d8 50%, transparent 100%);
+  box-shadow: 0 0 8px 2px rgba(255, 255, 255, 0.9), 0 0 16px 4px rgba(192, 192, 220, 0.6);
+  animation: silverTwinkle 1.2s ease-in-out infinite;
+}
+
+.sparkle-ring .spark.star {
+  width: 10px;
+  height: 10px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #e8e8f5;
+  font-size: 10px;
+  line-height: 1;
+  text-shadow: 0 0 8px #fff, 0 0 14px #c0c0e0;
+}
+
+@keyframes silverTwinkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.6); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.reveal-label,
+.winner-name,
+.reveal-sub {
+  position: relative;
+  z-index: 2;
 }
